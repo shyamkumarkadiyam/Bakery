@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
+  <defs>
+    <!-- Filters for Shadows and Glows -->
+    <filter id="blurLarge" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" />
+    </filter>
+    <filter id="blurSmall" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1" />
+    </filter>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="0.8" flood-color="#D97A9F" flood-opacity="0.5" />
+    </filter>
+    <filter id="plateShadowFilter" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#B0C4DE" flood-opacity="0.4" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="plateBaseGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E2E8F0" />
+      <stop offset="50%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </linearGradient>
+
+    <linearGradient id="plateTopGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="70%" stop-color="#F1F5F9" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+
+    <linearGradient id="cakeSideGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="15%" stop-color="#FFF5E4" />
+      <stop offset="85%" stop-color="#FCEBCC" />
+      <stop offset="100%" stop-color="#EAD7B9" />
+    </linearGradient>
+
+    <linearGradient id="frostingSideGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FDE2EC" />
+      <stop offset="20%" stop-color="#F9A8C9" />
+      <stop offset="85%" stop-color="#F28EB5" />
+      <stop offset="100%" stop-color="#D97A9F" />
+    </linearGradient>
+
+    <linearGradient id="frostingTopGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="35%" stop-color="#FDE2EC" />
+      <stop offset="100%" stop-color="#F9A8C9" />
+    </linearGradient>
+
+    <linearGradient id="berryRed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF758F" />
+      <stop offset="100%" stop-color="#C9184A" />
+    </linearGradient>
+
+    <linearGradient id="berryBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8993D6" />
+      <stop offset="100%" stop-color="#4A55A2" />
+    </linearGradient>
+    
+    <linearGradient id="leafGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#B7E4C7" />
+      <stop offset="100%" stop-color="#52B788" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background / Floor Shadow -->
+  <ellipse cx="60" cy="77" rx="40" ry="14" fill="#94A3B8" opacity="0.15" filter="url(#blurLarge)" />
+  <ellipse cx="60" cy="75" rx="32" ry="10" fill="#64748B" opacity="0.15" filter="url(#blurSmall)" />
+
+  <!-- Plate -->
+  <g id="plate">
+    <!-- Plate Base/Thickness -->
+    <path d="M 15,70 L 15,72.5 A 45,20 0 0,0 105,72.5 L 105,70 Z" fill="url(#plateBaseGrad)" filter="url(#plateShadowFilter)" />
+    <!-- Plate Top Surface -->
+    <ellipse cx="60" cy="70" rx="45" ry="20" fill="url(#plateTopGrad)" />
+    <!-- Plate Inner Rim -->
+    <ellipse cx="60" cy="70.5" rx="34" ry="14.5" fill="none" stroke="#E2E8F0" stroke-width="1" opacity="0.8" />
+    <ellipse cx="60" cy="71" rx="32" ry="13.5" fill="#F8FAFC" />
+    <!-- Plate Edge Highlight -->
+    <ellipse cx="60" cy="70" rx="44" ry="19.5" fill="none" stroke="#FFFFFF" stroke-width="0.75" opacity="0.9" />
+  </g>
+
+  <!-- Cake Cast Shadow on Plate -->
+  <ellipse cx="63" cy="67" rx="28" ry="12" fill="#CBD5E1" opacity="0.7" filter="url(#blurSmall)" />
+  <ellipse cx="61" cy="66" rx="29" ry="12.5" fill="#94A3B8" opacity="0.15" />
+
+  <!-- Cake Body (Cream Sides) -->
+  <g id="cake-body">
+    <path d="M 30,45 L 30,65 A 30,13 0 0,0 90,65 L 90,45 Z" fill="url(#cakeSideGrad)" />
+    <!-- Subtle Side Highlight -->
+    <path d="M 32,46 L 32,64 A 26,11 0 0,0 40,65.5 L 40,47 Z" fill="#FFFFFF" opacity="0.4" filter="url(#blurSmall)" />
+  </g>
+
+  <!-- Frosting Drips (Pink Sides) -->
+  <path d="M 90,45
+           C 90,47 88,49 86,48
+           C 84,47 82,52 79,52
+           C 76,52 74,47 71,47
+           C 68,47 66,51 63,51
+           C 60,51 58,46 55,46
+           C 52,46 50,53 47,53
+           C 44,53 42,47 39,47
+           C 36,47 34,50 32,49
+           C 31,48.5 30,47 30,45
+           A 30,13 0 0,1 90,45 Z"
+        fill="url(#frostingSideGrad)" filter="url(#dropShadow)" />
+
+  <!-- Frosting Top Surface -->
+  <ellipse cx="60" cy="45" rx="30" ry="13" fill="url(#frostingTopGrad)" />
+  
+  <!-- Frosting Top Highlight (Gloss) -->
+  <ellipse cx="60" cy="45" rx="28" ry="11" fill="none" stroke="#FFFFFF" stroke-width="0.8" opacity="0.7" />
+
+  <!-- Sprinkles on Frosting -->
+  <g stroke-width="0.8" stroke-linecap="round" opacity="0.85">
+    <path d="M 38,42 L 40,43" stroke="#FFFFFF" />
+    <path d="M 76,43 L 75,45" stroke="#FFD166" />
+    <path d="M 70,39 L 72,38" stroke="#FFFFFF" />
+    <path d="M 44,48 L 46,47" stroke="#FFD166" />
+    <path d="M 82,46 L 84,46.5" stroke="#FFFFFF" />
+  </g>
+
+  <!-- Berries Cast Shadow -->
+  <ellipse cx="56" cy="44" rx="11" ry="5" fill="#D97A9F" opacity="0.6" filter="url(#blurSmall)" />
+
+  <!-- Berries & Leaves -->
+  <g id="decorations">
+    <!-- Mint Leaf 1 (Left) -->
+    <path d="M 51,41 C 46,42 44,38 46,36 C 49,35 52,38 51,41 Z" fill="url(#leafGreen)" />
+    <path d="M 51,41 C 46,42 44,38 46,36 C 49,35 52,38 51,41 Z" fill="none" stroke="#40916C" stroke-width="0.4" opacity="0.6" />
+    <path d="M 46,36 C 48,38 49,40 51,41" fill="none" stroke="#40916C" stroke-width="0.4" opacity="0.5" />
+
+    <!-- Mint Leaf 2 (Right) -->
+    <path d="M 62,38 C 66,37 67,41 65,43 C 62,44 60,41 62,38 Z" fill="url(#leafGreen)" />
+    <path d="M 62,38 C 66,37 67,41 65,43 C 62,44 60,41 62,38 Z" fill="none" stroke="#40916C" stroke-width="0.4" opacity="0.6" />
+    <path d="M 62,38 C 64,40 64,42 65,43" fill="none" stroke="#40916C" stroke-width="0.4" opacity="0.5" />
+
+    <!-- Strawberry -->
+    <path d="M 56,43.5 C 52,43.5 50,38.5 53,34.5 C 56,31.5 60,32.5 61,36.5 C 62,40.5 59,43.5 56,43.5 Z" fill="url(#berryRed)" />
+    <!-- Strawberry Seeds -->
+    <g fill="#FFD166">
+      <circle cx="54" cy="36.5" r="0.5" />
+      <circle cx="57" cy="35.5" r="0.5" />
+      <circle cx="58" cy="38.5" r="0.5" />
+      <circle cx="55" cy="39.5" r="0.5" />
+      <circle cx="53" cy="40.5" r="0.5" />
+      <circle cx="57" cy="41.5" r="0.5" />
+      <circle cx="59.5" cy="40.5" r="0.5" />
+    </g>
+    <!-- Strawberry Highlight -->
+    <path d="M 53,34.5 C 54,33 56,32.5 57,33.5 C 56,34 54,35 53,34.5 Z" fill="#FFFFFF" opacity="0.6" />
+
+    <!-- Blueberries -->
+    <g id="blueberry-1">
+      <circle cx="48" cy="42.5" r="2.5" fill="url(#berryBlue)" />
+      <circle cx="48" cy="42.5" r="1" fill="none" stroke="#A9B4E4" stroke-width="0.5" opacity="0.7" />
+      <circle cx="47" cy="41.5" r="0.6" fill="#FFFFFF" opacity="0.5" />
+    </g>
+
+    <g id="blueberry-2">
+      <circle cx="63.5" cy="44.5" r="2" fill="url(#berryBlue)" />
+      <circle cx="63.5" cy="44.5" r="0.8" fill="none" stroke="#A9B4E4" stroke-width="0.5" opacity="0.7" />
+      <circle cx="62.8" cy="43.8" r="0.5" fill="#FFFFFF" opacity="0.5" />
+    </g>
+
+    <g id="blueberry-3">
+      <circle cx="59" cy="35" r="2.2" fill="url(#berryBlue)" />
+      <circle cx="59" cy="35" r="0.8" fill="none" stroke="#A9B4E4" stroke-width="0.5" opacity="0.7" />
+      <circle cx="58.2" cy="34.2" r="0.5" fill="#FFFFFF" opacity="0.5" />
+    </g>
+
+    <!-- Raspberry (Cluster of tiny circles) -->
+    <g fill="url(#berryRed)">
+      <circle cx="50" cy="45" r="1.2" />
+      <circle cx="52" cy="46" r="1.2" />
+      <circle cx="54" cy="45.5" r="1.2" />
+      <circle cx="51" cy="43.5" r="1.2" />
+      <circle cx="53" cy="44" r="1.2" />
+      <circle cx="55" cy="44" r="1.2" />
+      <circle cx="52" cy="42" r="1.2" />
+      <circle cx="54" cy="42.5" r="1.2" />
+    </g>
+    <!-- Raspberry Highlights -->
+    <g fill="#FFB3C1" opacity="0.8">
+      <circle cx="49.7" cy="44.7" r="0.4" />
+      <circle cx="51.7" cy="45.7" r="0.4" />
+      <circle cx="53.7" cy="45.2" r="0.4" />
+      <circle cx="50.7" cy="43.2" r="0.4" />
+      <circle cx="52.7" cy="43.7" r="0.4" />
+      <circle cx="54.7" cy="43.7" r="0.4" />
+      <circle cx="51.7" cy="41.7" r="0.4" />
+      <circle cx="53.7" cy="42.2" r="0.4" />
+    </g>
+  </g>
+</svg>
