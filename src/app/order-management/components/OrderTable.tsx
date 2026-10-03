@@ -3,6 +3,7 @@ import React from 'react';
 import { Order, OrderStatus } from '@/data/ordersData';
 import OrderStatusBadge from './OrderStatusBadge';
 import { Bike, Package, ChevronRight } from 'lucide-react';
+import { scheduleLabel } from '@/lib/inventory';
 
 interface OrderTableProps {
   orders: Order[];
@@ -19,6 +20,7 @@ const nextStatusMap: Record<OrderStatus, OrderStatus | null> = {
   enroute: 'delivered',
   delivered: null,
   pickup: null,
+  cancelled: null,
 };
 
 const nextStatusLabel: Record<OrderStatus, string> = {
@@ -28,6 +30,7 @@ const nextStatusLabel: Record<OrderStatus, string> = {
   enroute: 'Mark Delivered',
   delivered: '',
   pickup: '',
+  cancelled: '',
 };
 
 export default function OrderTable({ orders, selectedId, onSelect, onUpdateStatus, updatingIds }: OrderTableProps) {
@@ -61,6 +64,7 @@ export default function OrderTable({ orders, selectedId, onSelect, onUpdateStatu
           const next = nextStatusMap[order.status];
           return (
             <div
+              data-testid={`admin-order-row-${order.id}`}
               key={order.id}
               onClick={() => onSelect(order)}
               className={`order-row-hover cursor-pointer transition-colors ${
@@ -70,7 +74,7 @@ export default function OrderTable({ orders, selectedId, onSelect, onUpdateStatu
               {/* Desktop Row */}
               <div className="hidden md:grid grid-cols-12 gap-3 px-5 py-4 items-center">
                 <div className="col-span-2">
-                  <span className="font-extrabold text-sm text-primary font-tabular">{order.id}</span>
+                  <span className="font-extrabold text-xs break-all text-primary font-tabular">{order.id}</span>
                 </div>
                 <div className="col-span-2">
                   <p className="font-semibold text-sm text-foreground truncate">{order.customerName}</p>
@@ -98,12 +102,13 @@ export default function OrderTable({ orders, selectedId, onSelect, onUpdateStatu
                   </span>
                 </div>
                 <div className="col-span-1">
-                  <span className="text-xs text-muted-foreground font-medium">{order.placedAt}</span>
+                  <span data-testid={`admin-order-time-${order.id}`} className="text-xs text-muted-foreground font-medium">{order.scheduledFor?scheduleLabel(order.scheduledFor,order.fulfillmentTimezone):order.placedAt}</span>
                 </div>
-                <div className="col-span-2 flex items-center gap-2">
+                <div className="col-span-2 flex flex-wrap items-center gap-2">
                   <OrderStatusBadge status={order.status} />
                   {next && (
                     <button
+                      data-testid={`admin-order-next-${order.id}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onUpdateStatus(order.id, next);
@@ -121,10 +126,11 @@ export default function OrderTable({ orders, selectedId, onSelect, onUpdateStatu
               <div className="md:hidden px-3 py-3 flex items-center gap-2">
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                    <span className="font-extrabold text-sm text-primary font-tabular shrink-0">{order.id}</span>
+                    <span className="font-extrabold text-xs break-all text-primary font-tabular">{order.id}</span>
                     <OrderStatusBadge status={order.status} />
                   </div>
                   <p className="font-semibold text-sm text-foreground truncate">{order.customerName}</p>
+                  {order.scheduledFor&&<p data-testid={`admin-order-mobile-time-${order.id}`} className="text-xs text-primary">{scheduleLabel(order.scheduledFor,order.fulfillmentTimezone)}</p>}
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {order.items.map((i) => i.name).join(', ')}
                   </p>

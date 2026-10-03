@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
 import Image from 'next/image';
 
 interface AppImageProps {
@@ -40,9 +40,11 @@ const AppImage = memo(function AppImage({
     unoptimized = false,
     ...props
 }: AppImageProps) {
-    const [imageSrc, setImageSrc] = useState(src);
+    const safeSrc = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
+    const [imageSrc, setImageSrc] = useState(safeSrc);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    useEffect(() => { setImageSrc(safeSrc); setHasError(false); setIsLoading(true); }, [safeSrc]);
 
     // Only use unoptimized if explicitly passed — do NOT auto-disable optimization for external URLs
     const resolvedUnoptimized = unoptimized;

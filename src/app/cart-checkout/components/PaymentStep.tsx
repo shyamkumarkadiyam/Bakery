@@ -10,8 +10,10 @@ interface PaymentStepProps {
   data: CheckoutData;
   setData: (d: CheckoutData) => void;
   items: CartItem[];
-  onPlace: () => void;
+  onPlace: () => Promise<void>;
   onBack: () => void;
+  placing: boolean;
+  disabled: boolean;
 }
 
 const paymentMethods = [
@@ -29,22 +31,12 @@ const paymentMethods = [
   },
 ];
 
-export default function PaymentStep({ data, setData, items, onPlace, onBack }: PaymentStepProps) {
-  const [placing, setPlacing] = useState(false);
+export default function PaymentStep({ data, setData, items, onPlace, onBack, placing, disabled }: PaymentStepProps) {
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const delivery = data.deliveryType === 'delivery' ? 3.5 : 0;
   const tax = subtotal * 0.08;
   const total = subtotal + delivery + tax;
-
-  const handlePlace = () => {
-    setPlacing(true);
-    // Backend integration point: process payment and create order
-    setTimeout(() => {
-      setPlacing(false);
-      onPlace();
-    }, 1500);
-  };
 
   return (
     <div className="space-y-5">
@@ -61,6 +53,8 @@ export default function PaymentStep({ data, setData, items, onPlace, onBack }: P
             const isSelected = data.paymentMethod === method.id;
             return (
               <button
+                data-testid={`payment-method-${method.id}`}
+                disabled={placing}
                 key={`payment-${method.id}`}
                 onClick={() => setData({ ...data, paymentMethod: method.id })}
                 className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
@@ -132,12 +126,13 @@ export default function PaymentStep({ data, setData, items, onPlace, onBack }: P
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button onClick={onBack} className="btn-outline flex-1 py-3.5 text-sm">
+          <button data-testid="payment-back" disabled={placing} onClick={onBack} className="btn-outline flex-1 py-3.5 text-sm">
             ← Back
           </button>
           <button
-            onClick={handlePlace}
-            disabled={placing}
+            data-testid="place-order-submit"
+            onClick={onPlace}
+            disabled={placing || disabled}
             className={`btn-primary flex-1 py-3.5 text-sm flex items-center justify-center gap-2 ${placing ? 'opacity-80' : ''}`}
           >
             {placing ? (

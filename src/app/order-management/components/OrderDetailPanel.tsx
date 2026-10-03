@@ -4,6 +4,7 @@ import { Order, OrderStatus } from '@/data/ordersData';
 import OrderStatusBadge from './OrderStatusBadge';
 import { X, Phone, MapPin, Clock, Package, MessageSquare, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { scheduleLabel } from '@/lib/inventory';
 
 interface OrderDetailPanelProps {
   order: Order;
@@ -18,6 +19,7 @@ const allStatuses: { value: OrderStatus; label: string }[] = [
   { value: 'enroute', label: 'En Route' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'pickup', label: 'Pickup Ready' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 export default function OrderDetailPanel({ order, onClose, onUpdateStatus }: OrderDetailPanelProps) {
@@ -26,7 +28,6 @@ export default function OrderDetailPanel({ order, onClose, onUpdateStatus }: Ord
   const handleStatusChange = (newStatus: OrderStatus) => {
     onUpdateStatus(order.id, newStatus);
     setStatusDropdownOpen(false);
-    toast.success(`Order ${order.id} updated to "${newStatus}"`);
   };
 
   return (
@@ -35,9 +36,10 @@ export default function OrderDetailPanel({ order, onClose, onUpdateStatus }: Ord
       <div className="flex items-center justify-between p-5 border-b border-border bg-gradient-to-r from-pink-light to-white">
         <div>
           <p className="text-xs text-muted-foreground font-semibold">Order Details</p>
-          <p className="text-xl font-extrabold text-primary font-tabular">{order.id}</p>
+          <p data-testid="admin-order-detail-id" className="text-sm break-all font-extrabold text-primary font-tabular">{order.id}</p>
         </div>
         <button
+          data-testid="admin-order-detail-close"
           onClick={onClose}
           className="w-8 h-8 rounded-full bg-white border border-border flex items-center justify-center hover:bg-muted transition-colors"
         >
@@ -46,11 +48,14 @@ export default function OrderDetailPanel({ order, onClose, onUpdateStatus }: Ord
       </div>
 
       <div className="p-5 space-y-5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <p data-testid="admin-order-schedule" className="text-sm font-semibold text-primary">{scheduleLabel(order.scheduledFor,order.fulfillmentTimezone)}</p>
         {/* Status Updater */}
         <div>
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Status</p>
           <div className="relative">
             <button
+              data-testid="admin-order-status-select"
+              disabled={order.status==='cancelled'}
               onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
               className="w-full flex items-center justify-between px-4 py-3 bg-muted rounded-2xl border border-border hover:border-primary/40 transition-colors"
             >
@@ -61,6 +66,7 @@ export default function OrderDetailPanel({ order, onClose, onUpdateStatus }: Ord
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-2xl shadow-kawaii z-20 overflow-hidden animate-slide-up">
                 {allStatuses.map((s) => (
                   <button
+                    data-testid={`admin-order-status-${s.value}`}
                     key={`status-option-${s.value}`}
                     onClick={() => handleStatusChange(s.value)}
                     className={`w-full flex items-center px-4 py-2.5 text-sm transition-colors hover:bg-muted ${
@@ -114,9 +120,9 @@ export default function OrderDetailPanel({ order, onClose, onUpdateStatus }: Ord
             {order.items.map((item, idx) => (
               <div
                 key={`detail-item-${order.id}-${idx}`}
-                className="flex justify-between items-center text-sm bg-muted rounded-xl px-3 py-2.5"
+                className="flex justify-between items-start text-sm bg-muted rounded-xl px-3 py-2.5"
               >
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold text-foreground whitespace-pre-line">
                   {item.name}
                   <span className="text-muted-foreground font-normal ml-1">×{item.qty}</span>
                 </span>

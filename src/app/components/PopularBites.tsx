@@ -14,7 +14,7 @@ const bites = [
   priceValue: 8.50,
   image: 'https://img.rocket.new/generatedImages/rocket_gen_img_16460d06b-1773095810884.png',
   alt: 'Golden arepa stuffed with chicken and avocado on a wooden board',
-  href: '/menu-browser'
+  href: '/menu-browser?category=arepa'
 },
 {
   id: 'bite-empanada',
@@ -24,7 +24,7 @@ const bites = [
   priceValue: 5.00,
   image: 'https://images.unsplash.com/photo-1685591626168-f6caa5fcbe7f',
   alt: 'Crispy golden empanadas on a plate with dipping sauce',
-  href: '/menu-browser'
+  href: '/menu-browser?category=empanada'
 },
 {
   id: 'bite-patacon',
@@ -34,7 +34,7 @@ const bites = [
   priceValue: 11.50,
   image: 'https://img.rocket.new/generatedImages/rocket_gen_img_1c531bb93-1765291114488.png',
   alt: 'Patacon sandwich made from crispy fried plantains with beef filling',
-  href: '/menu-browser'
+  href: '/menu-browser?category=patacon'
 },
 {
   id: 'bite-cachapa',
@@ -44,7 +44,7 @@ const bites = [
   priceValue: 8.00,
   image: 'https://img.rocket.new/generatedImages/rocket_gen_img_154ecb8da-1772058235093.png',
   alt: 'Sweet golden cachapa corn pancake folded over white cheese',
-  href: '/menu-browser'
+  href: '/menu-browser?category=cachapa'
 },
 {
   id: 'bite-tequeno',
@@ -54,7 +54,7 @@ const bites = [
   priceValue: 7.00,
   image: 'https://img.rocket.new/generatedImages/rocket_gen_img_125c7fa97-1772058236283.png',
   alt: 'Six golden fried tequeños cheese sticks on a pink serving plate',
-  href: '/menu-browser'
+  href: '/menu-browser?category=tequeno'
 },
 {
   id: 'bite-sweets',
@@ -64,58 +64,11 @@ const bites = [
   priceValue: 4.50,
   image: 'https://img.rocket.new/generatedImages/rocket_gen_img_141ceddb0-1765232175619.png',
   alt: 'Venezuelan quesillo flan with golden caramel sauce on a white plate',
-  href: '/menu-browser'
+  href: '/menu-browser?category=sweet'
 }];
 
 function AddToCartButton({ bite }: { bite: typeof bites[0] }) {
-  const addItem = useCartStore((state) => state.addItem);
-  const cartItems = useCartStore((s) => s.items);
-  const inCart = cartItems.find((i) => i.id === bite.id);
-  const [adding, setAdding] = useState(false);
-  const [justAdded, setJustAdded] = useState(false);
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (adding) return;
-    setAdding(true);
-    setJustAdded(true);
-    addItem({
-      id: bite.id,
-      name: bite.name,
-      price: bite.priceValue,
-      image: bite.image,
-      category: 'Popular Bites',
-    });
-    setTimeout(() => {
-      setAdding(false);
-      setTimeout(() => setJustAdded(false), 1500);
-    }, 400);
-  };
-
-  return (
-    <button
-      onClick={handleAddToCart}
-      disabled={adding}
-      aria-label={`Add ${bite.name} to cart`}
-      className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all w-full mt-2 ${
-        justAdded ? 'bg-green-500 text-white' : 'text-white hover:opacity-90 active:scale-95'
-      }`}
-      style={justAdded ? {} : { background: '#c07a2a' }}
-    >
-      {justAdded ? (
-        <>
-          <Check size={12} />
-          Added
-        </>
-      ) : (
-        <>
-          <ShoppingCart size={12} />
-          {inCart ? `In Cart (${inCart.qty})` : 'Add to Cart'}
-        </>
-      )}
-    </button>
-  );
+  return <span data-testid={`popular-browse-${bite.id}`} className="block text-center text-primary text-xs font-semibold mt-2">Choose a dish →</span>;
 }
 
 export default function PopularBites() {
@@ -137,13 +90,14 @@ export default function PopularBites() {
           </Link>
         </div>
 
-        {/* Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 lg:grid-cols-6 md:overflow-visible scrollbar-hide">
+        {/* Single horizontal sliding row */}
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x">
           {bites?.map((bite) =>
           <Link
             key={bite?.id}
             href={bite?.href}
-            className="flex-shrink-0 w-40 md:w-auto group block rounded-xl overflow-hidden bg-white border border-border card-hover">
+            data-testid={`popular-bite-${bite?.id}`}
+            className="flex-shrink-0 w-44 snap-start group block rounded-xl overflow-hidden bg-white border border-border card-hover">
             
               <div className="relative aspect-square overflow-hidden bg-muted">
                 <AppImage

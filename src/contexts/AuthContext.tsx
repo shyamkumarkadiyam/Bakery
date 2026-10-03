@@ -3,6 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 const AuthContext = createContext<any>({});
 
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     mountedRef.current = true;
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       if (!mountedRef.current) return;
       setSession(session);
       setUser(session?.user ?? null);
@@ -35,7 +36,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth changes
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, newSession: Session | null) => {
       if (!mountedRef.current) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
@@ -49,7 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase]);
 
   // Email/Password Sign Up
-  const signUp = async (email: string, password: string, metadata = {}) => {
+  const signUp = async (email: string, password: string, metadata: { fullName?: string; avatarUrl?: string } = {}) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

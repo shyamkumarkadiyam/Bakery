@@ -24,7 +24,8 @@ export default function LoginPage() {
       // Give the auth state change listener a tick to propagate the session
       // before navigating, so downstream pages don't see a stale null-user state.
       await new Promise((resolve) => setTimeout(resolve, 100));
-      router.push('/account');
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      router.push(redirect || '/account');
     } catch (err: any) {
       const msg: string = err?.message || '';
       if (msg.toLowerCase().includes('email not confirmed') || msg.toLowerCase().includes('email_not_confirmed')) {
@@ -44,7 +45,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
+          <Link data-testid="login-home" href="/" className="inline-block">
             <span className="font-sans font-extrabold text-2xl tracking-tight" style={{ color: '#6b1a2e' }}>
               Lolita Bakery
             </span>
@@ -58,7 +59,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-3xl shadow-card-md p-8">
           {/* Error */}
           {error && (
-            <div className="mb-5 px-4 py-3 rounded-xl text-sm font-body" style={{ background: '#fde8e8', color: '#c0392b' }}>
+            <div data-testid="login-error" role="alert" className="mb-5 px-4 py-3 rounded-xl text-sm font-body" style={{ background: '#fde8e8', color: '#c0392b' }}>
               {error}
             </div>
           )}
@@ -72,6 +73,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#9b8a8e' }} />
                 <input
+                  data-testid="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -88,13 +90,14 @@ export default function LoginPage() {
                 <label className="font-sans font-semibold text-xs" style={{ color: '#3a2a2e' }}>
                   Password
                 </label>
-                <Link href="/forgot-password" className="font-body text-xs hover:underline" style={{ color: '#7a2a3a' }}>
+                <Link data-testid="login-forgot-password" href="/forgot-password" className="font-body text-xs hover:underline" style={{ color: '#7a2a3a' }}>
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#9b8a8e' }} />
                 <input
+                  data-testid="login-password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -104,6 +107,8 @@ export default function LoginPage() {
                   style={{ borderColor: '#e5dde0', color: '#1a1a1a', background: '#fdf8f2' }}
                 />
                 <button
+                  data-testid="login-toggle-password"
+                  aria-label={showPassword?'Hide password':'Show password'}
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2"
@@ -115,6 +120,7 @@ export default function LoginPage() {
             </div>
 
             <button
+              data-testid="login-submit"
               type="submit"
               disabled={loading}
               className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-sans font-bold text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
@@ -131,7 +137,7 @@ export default function LoginPage() {
           {/* Register link */}
           <p className="text-center font-body text-sm mt-6" style={{ color: '#6b5a5e' }}>
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="font-semibold hover:underline" style={{ color: '#7a2a3a' }}>
+            <Link data-testid="login-register" href="/register" className="font-semibold hover:underline" style={{ color: '#7a2a3a' }}>
               Create one
             </Link>
           </p>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="9" time="3.962" timestamp="2026-10-02T10:06:02.861318+00:00" hostname="agent-env-d5c5415a-b203-496a-a776-86ba241c1b9c"><testcase classname="tests.test_inventory_core" name="test_wrapper_availability_and_orders_validation" time="1.274" /><testcase classname="tests.test_inventory_core" name="test_guest_cannot_edit_inventory_admin_rpc" time="0.938" /><testcase classname="tests.test_inventory_core" name="test_default_override_and_reset_preserves_reservations" time="0.327"><failure message="AssertionError: {&quot;code&quot;:&quot;42702&quot;,&quot;details&quot;:&quot;It could refer to either a PL/pgSQL variable or a table column.&quot;,&quot;hint&quot;:null,&quot;message&quot;:&quot;column reference \&quot;m.id\&quot; is ambiguous&quot;}&#10;assert 400 == 200&#10; +  where 400 = &lt;Response [400]&gt;.status_code">tests/test_inventory_core.py:240: in test_default_override_and_reset_preserves_reservations
+    assert placed.status_code == 200, placed.text
+E   AssertionError: {"code":"42702","details":"It could refer to either a PL/pgSQL variable or a table column.","hint":null,"message":"column reference \"m.id\" is ambiguous"}
+E   assert 400 == 200
+E    +  where 400 = &lt;Response [400]&gt;.status_code</failure></testcase><testcase classname="tests.test_inventory_core" name="test_blocked_day_forces_zero_and_prevents_opening_item" time="0.315" /><testcase classname="tests.test_inventory_core" name="test_concurrent_last_item_only_one_checkout_succeeds" time="0.162"><failure message="AssertionError: assert [400, 400] == [400, 200]&#10;  &#10;  At index 1 diff: 400 != 200&#10;  &#10;  Full diff:&#10;    [&#10;        400,&#10;  -     200,...&#10;  &#10;  ...Full output truncated (4 lines hidden), use '-vv' to show">tests/test_inventory_core.py:348: in test_concurrent_last_item_only_one_checkout_succeeds
+    assert statuses == [400, 200]
+E   AssertionError: assert [400, 400] == [400, 200]
+E     
+E     At index 1 diff: 400 != 200
+E     
+E     Full diff:
+E       [
+E           400,
+E     -     200,...
+E     
+E     ...Full output truncated (4 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_inventory_core" name="test_atomic_rollback_on_multi_item_insufficient" time="0.271" /><testcase classname="tests.test_inventory_core" name="test_duplicate_ids_idempotency_and_server_price_authority" time="0.056"><failure message="assert 400 == 200&#10; +  where 400 = &lt;Response [400]&gt;.status_code">tests/test_inventory_core.py:410: in test_duplicate_ids_idempotency_and_server_price_authority
+    assert first.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = &lt;Response [400]&gt;.status_code</failure></testcase><testcase classname="tests.test_inventory_core" name="test_invalid_qty_and_past_schedule_rejected" time="0.131" /><testcase classname="tests.test_inventory_core" name="test_delete_item_cascades_availability_and_keeps_order_snapshot" time="0.345"><failure message="AssertionError: {&quot;code&quot;:&quot;42702&quot;,&quot;details&quot;:&quot;It could refer to either a PL/pgSQL variable or a table column.&quot;,&quot;hint&quot;:null,&quot;message&quot;:&quot;column reference \&quot;m.id\&quot; is ambiguous&quot;}&#10;assert 400 == 200&#10; +  where 400 = &lt;Response [400]&gt;.status_code">tests/test_inventory_core.py:497: in test_delete_item_cascades_availability_and_keeps_order_snapshot
+    assert placed.status_code == 200, placed.text
+E   AssertionError: {"code":"42702","details":"It could refer to either a PL/pgSQL variable or a table column.","hint":null,"message":"column reference \"m.id\" is ambiguous"}
+E   assert 400 == 200
+E    +  where 400 = &lt;Response [400]&gt;.status_code</failure></testcase></testsuite></testsuites>

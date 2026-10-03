@@ -1,251 +1,105 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import { useEffect,useMemo,useRef,useState } from 'react';
 import { useCartStore } from '@/store/cartStore';
+import { createClient } from '@/lib/supabase/client';
+import { useAvailability } from '@/lib/hooks/useAvailability';
+import { notifyInventoryChange } from '@/lib/inventory';
+import { inventoryErrorMessage } from '@/lib/inventory-errors';
+import { SchedulePicker } from '@/components/SchedulePicker';
 import CartStep from './CartStep';
 import AddressStep from './AddressStep';
 import PaymentStep from './PaymentStep';
 import OrderSuccessStep from './OrderSuccessStep';
-import { CheckCircle, ShoppingCart, MapPin, CreditCard } from 'lucide-react';
-import Icon from '@/components/ui/AppIcon';
-import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-
-
-const steps = [
-  { id: 'cart', label: 'Cart', icon: ShoppingCart },
-  { id: 'address', label: 'Delivery', icon: MapPin },
-  { id: 'payment', label: 'Payment', icon: CreditCard },
-];
 
 export type CheckoutData = {
-  deliveryType: 'delivery' | 'pickup';
-  address: {
-    name: string;
-    phone: string;
-    street: string;
-    apt: string;
-    city: string;
-    zip: string;
-    instructions: string;
-  };
-  paymentMethod: 'cash' | 'zelle';
+  deliveryType:'delivery'|'pickup';
+  address:{name:string;phone:string;street:string;apt:string;city:string;zip:string;instructions:string};
+  paymentMethod:'cash'|'zelle';
 };
+const defaultData:CheckoutData={deliveryType:'delivery',address:{name:'',phone:'',street:'',apt:'',city:'',zip:'',instructions:''},paymentMethod:'zelle'};
+type Receipt={id:string;total:number;scheduled_for:string|null;timezone:string};
 
-const defaultData: CheckoutData = {
-  deliveryType: 'delivery',
-  address: { name: '', phone: '', street: '', apt: '', city: '', zip: '', instructions: '' },
-  paymentMethod: 'zelle',
-};
-
-export default function CartCheckoutClient() {
-  const [step, setStep] = useState(0);
-  const [checkoutData, setCheckoutData] = useState<CheckoutData>(defaultData);
-  const [orderId, setOrderId] = useState('');
-  const [orderError, setOrderError] = useState('');
-  const items = useCartStore((s) => s.items);
-  const { user } = useAuth();
-  // Create client once at component level so the session is stable
-  const supabase = React.useMemo(() => createClient(), []);
-
-  const handlePlaceOrder = async () => {
-    const id = `LB-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const deliveryFee = checkoutData.deliveryType === 'delivery' ? 3.5 : 0;
-    const tax = subtotal * 0.08;
-    const total = subtotal + deliveryFee + tax;
-
-    const addressStr = checkoutData.deliveryType === 'pickup' ? 'Pickup'
-      : [
-          checkoutData.address.street,
-          checkoutData.address.apt,
-          checkoutData.address.city,
-          checkoutData.address.zip,
-        ].filter(Boolean).join(', ');
-
-    try {
-      // Ensure user_profile exists for authenticated users before inserting order
-      if (user?.id) {
-        await supabase.from('user_profiles').upsert({
-          id: user.id,
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name || checkoutData.address.name || '',
-          phone: checkoutData.address.phone || '',
-        }, { onConflict: 'id', ignoreDuplicates: true });
-      }
-
-      const { error: orderError } = await supabase.from('orders').insert({
-        id,
-        user_id: user?.id ?? null,
-        customer_name: checkoutData.address.name || user?.user_metadata?.full_name || 'Guest',
-        customer_phone: checkoutData.address.phone || '',
-        customer_address: addressStr,
-        delivery_type: checkoutData.deliveryType,
-        payment_method: checkoutData.paymentMethod,
-        subtotal: parseFloat(subtotal.toFixed(2)),
-        delivery_fee: deliveryFee,
-        tax: parseFloat(tax.toFixed(2)),
-        total: parseFloat(total.toFixed(2)),
-        status: 'pending',
-        notes: checkoutData.address.instructions || '',
-        placed_at: new Date().toISOString(),
-      });
-
-      if (orderError) {
-        console.error('Order insert error:', orderError.message);
-        // Still proceed — don't block checkout on DB error
-      } else {
-        // Insert order items
-        const orderItems = items.map((item) => ({
-          order_id: id,
-          name: item.name,
-          qty: item.qty,
-          price: item.price,
-        }));
-        const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-        if (itemsError) {
-          console.error('Order items insert error:', itemsError.message);
-        }
-
-        // Upsert initial status event so customer order-status page shows timeline immediately
-        await supabase.rpc('upsert_order_status_event', {
-          p_order_id: id,
-          p_status: 'pending',
-          p_message: 'Order received and awaiting confirmation',
-        });
-      }
-    } catch (err: any) {
-      console.error('Checkout error:', err?.message);
-    }
-
-    setOrderId(id);
-    setStep(3);
+export default function CartCheckoutClient(){
+  const [step,setStep]=useState(0); const [checkoutData,setCheckoutData]=useState(defaultData);
+  const [orderError,setOrderError]=useState(''); const [placing,setPlacing]=useState(false);
+  const [receipt,setReceipt]=useState<Receipt|null>(null); const inFlight=useRef(false);
+  const {items:cartItems,mode,date,time}=useCartStore();
+  const setSchedule=useCartStore(s=>s.setSchedule); const hydrated=useCartStore(s=>s.hydrated);
+  useEffect(()=>{ if(hydrated) setSchedule({mode:'now'}); },[hydrated,setSchedule]);
+  const availability=useAvailability(mode==='later'?date:undefined);
+  const stock=availability.data?.items;
+  // Show authoritative menu prices/names for regular items; box lines pass through.
+  const items=useMemo(()=>cartItems.map(item=>{
+    if(item.isBox) return item;
+    const current=stock?.find(i=>i.id===item.id);
+    return current?{...item,name:current.name,price:current.price}:item;
+  }),[cartItems,stock]);
+  // Aggregate demand per menu item across regular lines and box components.
+  const demand=useMemo(()=>{
+    const d:Record<string,number>={};
+    items.forEach(it=>{
+      if(it.isBox) it.components?.forEach(c=>{d[c.id]=(d[c.id]||0)+c.qty*it.qty;});
+      else d[it.id]=(d[it.id]||0)+it.qty;
+    });
+    return d;
+  },[items]);
+  const issues=!stock?[]:Object.entries(demand).flatMap(([id,qty])=>{
+    const current=stock.find(i=>i.id===id);
+    const label=current?.name||id;
+    if(!current) return [`${label} is no longer on the menu. Remove it to continue.`];
+    if(!current.available) return [`${label} is Out of Stock for this date.`];
+    const limit=Math.min(current.remaining,current.max_qty_per_order);
+    return qty>limit?[`${label}: maximum ${limit} available for this order.`]:[];
+  });
+  const localTime=new Intl.DateTimeFormat('en-GB',{timeZone:availability.data?.timezone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());
+  const invalidSchedule=mode==='later'&&(!date||!time||date<availability.today||(date===availability.today&&time<=localTime));
+  const cannotOrder=availability.loading||!!availability.error||!!availability.data?.blocked||issues.length>0||!items.length||invalidSchedule;
+  const handlePlaceOrder=async()=>{
+    if(inFlight.current||cannotOrder)return;
+    inFlight.current=true;setPlacing(true);setOrderError('');
+    const address=checkoutData.address;
+    const regular=items.filter(i=>!i.isBox);
+    const boxLines=items.filter(i=>i.isBox);
+    const boxes=boxLines.flatMap(b=>Array.from({length:b.qty},()=>({label:b.boxLabel||b.name,items:(b.components||[]).map(c=>({id:c.id,qty:c.qty}))})));
+    const boxNoteStr=boxLines.map(b=>`${b.boxLabel||b.name} [${(b.components||[]).map(c=>`${c.qty}× ${c.name}`).join(', ')}]`).join(' | ');
+    const payload={mode,date:mode==='later'?date:null,time:mode==='later'?time:null,
+      customer_name:address.name,customer_phone:address.phone,
+      customer_address:checkoutData.deliveryType==='pickup'?'Pickup':[address.street,address.apt,address.city,address.zip].filter(Boolean).join(', '),
+      delivery_type:checkoutData.deliveryType,payment_method:checkoutData.paymentMethod,notes:[boxNoteStr,address.instructions].filter(Boolean).join(' | '),
+      items:regular.map(i=>({id:i.id,qty:i.qty})),boxes};
+    try{
+      const fingerprint=JSON.stringify(payload);
+      const saved=sessionStorage.getItem('lolita-checkout-request');
+      const pending=saved?JSON.parse(saved):null;
+      const id=pending?.fingerprint===fingerprint?pending.id:crypto.randomUUID();
+      sessionStorage.setItem('lolita-checkout-request',JSON.stringify({id,fingerprint}));
+      const {data,error}=await createClient().rpc('place_inventory_order',{p_request_id:id,p_payload:payload});
+      if(error)throw new Error(inventoryErrorMessage(error));
+      if(!data?.id)throw new Error('Order confirmation was not received. Please retry.');
+      setReceipt(data as Receipt);sessionStorage.removeItem('lolita-checkout-request');notifyInventoryChange();
+    }catch(e){setOrderError(e instanceof Error?e.message:'Could not place your order. Please retry.');await availability.refresh();}
+    finally{inFlight.current=false;setPlacing(false);}
   };
-
-  if (step === 3) {
-    return <OrderSuccessStep orderId={orderId} deliveryType={checkoutData.deliveryType} />;
-  }
-
-  return (
-    <div className="pt-20 pb-16 min-h-screen">
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-8 py-8">
-        {/* Progress */}
-        <div className="flex items-center justify-center gap-2 mb-10">
-          {steps.map((s, idx) => {
-            const Icon = s.icon;
-            const isActive = idx === step;
-            const isDone = idx < step;
-            return (
-              <React.Fragment key={`step-frag-${s.id}`}>
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                      isDone ? 'step-done' : isActive ? 'step-active' : 'step-inactive'
-                    }`}
-                  >
-                    {isDone ? <CheckCircle size={18} /> : <Icon size={16} />}
-                  </div>
-                  <span
-                    className={`text-sm font-semibold hidden sm:block ${
-                      isActive ? 'text-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-                {idx < steps.length - 1 && (
-                  <div className={`h-px w-12 sm:w-20 ${idx < step ? 'bg-green-text' : 'bg-border'}`} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-
-        {/* Step Content */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            {step === 0 && (
-              <CartStep
-                items={items}
-                onNext={() => setStep(1)}
-                data={checkoutData}
-                setData={setCheckoutData}
-              />
-            )}
-            {step === 1 && (
-              <AddressStep
-                data={checkoutData}
-                setData={setCheckoutData}
-                onNext={() => setStep(2)}
-                onBack={() => setStep(0)}
-              />
-            )}
-            {step === 2 && (
-              <PaymentStep
-                data={checkoutData}
-                setData={setCheckoutData}
-                items={items}
-                onPlace={handlePlaceOrder}
-                onBack={() => setStep(1)}
-              />
-            )}
-          </div>
-
-          {/* Order Summary Sidebar */}
-          <div className="hidden lg:block">
-            <div className="bg-white rounded-xl border border-border shadow-card p-5 sticky top-24">
-              <h3 className="font-sans font-semibold text-foreground mb-4 flex items-center gap-2">
-                <ShoppingCart size={16} className="text-primary" />
-                Order Summary
-              </h3>
-              <div className="space-y-3 mb-4">
-                {items.map((item) => (
-                  <div key={`summary-${item.id}`} className="flex justify-between items-center text-sm">
-                    <span className="font-body text-foreground">
-                      {item.name}
-                      <span className="text-muted-foreground ml-1">×{item.qty}</span>
-                    </span>
-                    <span className="font-sans font-semibold text-foreground font-tabular">
-                      ${(item.price * item.qty).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-border pt-3 space-y-2">
-                {(() => {
-                  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-                  const delivery = checkoutData.deliveryType === 'delivery' ? 3.5 : 0;
-                  const tax = subtotal * 0.08;
-                  return (
-                    <>
-                      <div className="flex justify-between font-body text-sm text-muted-foreground">
-                        <span>Subtotal</span>
-                        <span className="font-tabular">${subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-body text-sm text-muted-foreground">
-                        <span>Delivery fee</span>
-                        <span className="font-tabular">
-                          {delivery === 0 ? 'Free' : `$${delivery.toFixed(2)}`}
-                        </span>
-                      </div>
-                      <div className="flex justify-between font-body text-sm text-muted-foreground">
-                        <span>Tax (8%)</span>
-                        <span className="font-tabular">${tax.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-sans font-bold text-base text-foreground border-t border-border pt-2 mt-2">
-                        <span>Total</span>
-                        <span className="font-tabular text-primary">
-                          ${(subtotal + delivery + tax).toFixed(2)}
-                        </span>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  if(receipt)return <div data-testid="checkout-state" data-state="success"><OrderSuccessStep orderId={receipt.id} deliveryType={checkoutData.deliveryType} scheduledFor={receipt.scheduled_for} timezone={receipt.timezone} total={receipt.total}/></div>;
+  const subtotal=items.reduce((sum,i)=>sum+i.price*i.qty,0);const delivery=checkoutData.deliveryType==='delivery'?3.5:0;
+  return <div data-testid="checkout-state" data-state={placing?'submitting':'editing'} aria-busy={placing} className="pt-20 pb-24 min-h-screen"><div className="max-w-screen-xl mx-auto px-4 lg:px-8 py-6 space-y-6">
+    <div data-testid="checkout-progress" className="flex gap-4 text-sm font-semibold">{['Cart','Delivery','Payment'].map((label,i)=><span key={label} className={i===step?'text-primary':'text-muted-foreground'}>{i+1}. {label}</span>)}</div>
+    <SchedulePicker prefix="checkout-schedule" disabled={placing}/>
+    {(availability.error||orderError) && <div data-testid="checkout-error" role="alert" className="text-red-700 bg-red-50 p-4 rounded-lg">{orderError||availability.error}<button data-testid="checkout-retry-stock" onClick={availability.refresh} className="block underline mt-2 text-sm">Refresh availability</button></div>}
+    {availability.data?.blocked&&<p data-testid="checkout-closed" role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">The bakery is closed on this date. Please choose another date.</p>}
+    {invalidSchedule&&<p data-testid="checkout-invalid-schedule" role="alert" className="text-amber-800 bg-amber-50 p-3 rounded-lg text-sm">Choose a future date and time to continue.</p>}
+    {!!issues.length&&<ul data-testid="checkout-stock-issues" role="alert" className="text-red-700 bg-red-50 p-4 rounded-lg text-sm space-y-1">{issues.map(issue=><li key={issue}>{issue}</li>)}{step>0&&<li><button data-testid="checkout-edit-cart" onClick={()=>setStep(0)} className="underline font-semibold">Edit cart</button></li>}</ul>}
+    <div className="grid lg:grid-cols-3 gap-8"><section className="lg:col-span-2 min-w-0">
+      {step===0&&<CartStep items={items} onNext={()=>setStep(1)} data={checkoutData} setData={setCheckoutData} stock={stock} disabled={cannotOrder}/>}
+      {step===1&&<AddressStep data={checkoutData} setData={setCheckoutData} onNext={()=>setStep(2)} onBack={()=>setStep(0)}/>}
+      {step===2&&<PaymentStep data={checkoutData} setData={setCheckoutData} items={items} onPlace={handlePlaceOrder} onBack={()=>setStep(1)} placing={placing} disabled={cannotOrder}/>}
+    </section><aside className="border-t lg:border-t-0 lg:border-l border-border pt-5 lg:pt-0 lg:pl-6 space-y-3 min-w-0">
+      <h2 className="font-bold text-lg">Order summary</h2>
+      {items.map(item=><div data-testid={`checkout-summary-${item.id}`} key={item.id} className="flex justify-between gap-3 text-sm"><span>{item.name} ×{item.qty}</span><span className="font-semibold">${(item.price*item.qty).toFixed(2)}</span></div>)}
+      <div data-testid="checkout-subtotal" className="flex justify-between text-sm pt-3 border-t border-border"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+      <div data-testid="checkout-delivery-fee" className="flex justify-between text-sm"><span>Delivery</span><span>${delivery.toFixed(2)}</span></div>
+      <div data-testid="checkout-tax" className="flex justify-between text-sm"><span>Tax (8%)</span><span>${(subtotal*.08).toFixed(2)}</span></div>
+      <div data-testid="checkout-total" className="flex justify-between font-bold border-t border-border pt-3"><span>Total</span><span>${(subtotal+delivery+Math.round(subtotal*8)/100).toFixed(2)}</span></div>
+    </aside></div>
+  </div></div>;
 }

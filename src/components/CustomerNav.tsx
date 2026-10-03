@@ -2,14 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, User, Home, UtensilsCrossed, Cake } from 'lucide-react';
+import { ShoppingCart, User, Home, UtensilsCrossed, Cake, PackageSearch } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { useAuth } from '@/contexts/AuthContext';
 
 const navLinks = [
   { label: 'Menu', href: '/menu-browser' },
-  { label: 'Sweet Box', href: '/sweet-box-builder' },
+  { label: 'Breakfast Box', href: '/breakfast-box' },
   { label: 'Cake Studio', href: '/cake-studio' },
+  { label: 'Track Order', href: '/track-order' },
 ];
 
 const bottomNavItems = [
@@ -79,6 +80,7 @@ export default function CustomerNav() {
               <Link
                 key={`nav-${link?.href}`}
                 href={link?.href}
+                data-testid={`nav-link-${link?.href?.replace('/', '')}`}
                 className="text-sm font-extrabold font-sans transition-colors hover:text-foreground"
                 style={{ color: isActive(link?.href) ? '#6b1a2e' : '#3a2a2e' }}
               >
@@ -89,6 +91,14 @@ export default function CustomerNav() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2">
+            <Link
+              href="/track-order"
+              data-testid="nav-track-order-mobile"
+              className="md:hidden relative p-2 rounded-lg hover:bg-muted transition-colors"
+              aria-label="Track order"
+            >
+              <PackageSearch size={20} className="text-foreground" />
+            </Link>
             <Link
               href="/cart-checkout"
               className="relative p-2 rounded-lg hover:bg-muted transition-colors"

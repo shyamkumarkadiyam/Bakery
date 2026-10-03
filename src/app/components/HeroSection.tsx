@@ -43,11 +43,11 @@ export default function HeroSection() {
             Order Now
           </Link>
           <Link
-            href="/sweet-box-builder"
+            href="/breakfast-box"
             className="px-6 py-3 text-sm font-sans font-semibold inline-block text-center rounded-lg border-2 transition-all"
             style={{ borderColor: '#7a2a3a', color: '#7a2a3a', background: 'rgba(255,255,255,0.80)' }}
           >
-            Build Sweet Box
+            Build Breakfast Box
           </Link>
         </div>
       </div>
@@ -95,11 +95,11 @@ export default function HeroSection() {
             Order Now
           </Link>
           <Link
-            href="/sweet-box-builder"
+            href="/breakfast-box"
             className="px-7 py-3 text-sm font-sans font-semibold inline-block text-center rounded-lg border-2 transition-all"
             style={{ borderColor: '#7a2a3a', color: '#7a2a3a', background: 'rgba(255,255,255,0.75)' }}
           >
-            Build Sweet Box
+            Build Breakfast Box
           </Link>
         </div>
       </div>

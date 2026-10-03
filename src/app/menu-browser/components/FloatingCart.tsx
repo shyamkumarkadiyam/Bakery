@@ -6,7 +6,7 @@ import { useCartStore } from '@/store/cartStore';
 
 export default function FloatingCart() {
   const items = useCartStore((s) => s?.items);
-  const total = useCartStore((s) => s?.total);
+  const total = items.reduce((sum,item)=>sum+item.price*item.qty,0);
   const count = items?.reduce((a, i) => a + i?.qty, 0);
 
   if (count === 0) return null;
@@ -14,6 +14,7 @@ export default function FloatingCart() {
   return (
     <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-sm">
       <Link
+        data-testid="floating-cart-checkout"
         href="/cart-checkout"
         className="flex items-center justify-between bg-foreground text-white px-5 py-3.5 rounded-xl shadow-card-lg w-full"
       >

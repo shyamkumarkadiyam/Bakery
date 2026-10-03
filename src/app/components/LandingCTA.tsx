@@ -20,10 +20,10 @@ export default function LandingCTA() {
             Order Now
           </Link>
           <Link
-            href="/sweet-box-builder"
+            href="/breakfast-box"
             className="inline-block border border-white/60 text-white font-sans font-semibold px-8 py-3 rounded-lg text-sm hover:bg-white/10 transition-colors"
           >
-            Build Sweet Box
+            Build Breakfast Box
           </Link>
         </div>
       </div>

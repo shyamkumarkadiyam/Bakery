@@ -14,6 +14,8 @@ interface MenuItemCardProps {
     image: string;
     alt: string;
     available: boolean;
+    remaining: number;
+    max_qty_per_order: number;
     popular: boolean;
     badges: string[];
     calories?: number | null;
@@ -28,7 +30,7 @@ export default function MenuItemCard({ item }: MenuItemCardProps) {
   const [justAdded, setJustAdded] = useState(false);
 
   const handleAdd = () => {
-    if (!item.available || adding) return;
+    if (!item.available || adding || (inCart?.qty || 0) >= Math.min(item.remaining,item.max_qty_per_order)) return;
     setAdding(true);
     setJustAdded(true);
     addItem({
@@ -46,6 +48,7 @@ export default function MenuItemCard({ item }: MenuItemCardProps) {
 
   return (
     <div
+      data-testid={`menu-item-${item.id}`}
       className={`group rounded-2xl overflow-hidden bg-white border border-[#e8d5b0] shadow-sm hover:shadow-md transition-shadow flex flex-col ${
         !item.available ? 'opacity-60' : ''
       }`}
@@ -79,14 +82,17 @@ export default function MenuItemCard({ item }: MenuItemCardProps) {
           {item.description}
         </p>
 
+        <p data-testid={`menu-stock-${item.id}`} className={`text-xs font-semibold mb-3 ${item.available?'text-green-700':'text-red-700'}`}>{item.available?`${item.remaining} available`:'Out of Stock'}</p>
+
         {/* Price + Add to Cart */}
         <div className="flex items-center justify-between gap-2 mt-auto">
           <span className="font-sans font-bold text-foreground text-base">
             ${item.price.toFixed(2)}
           </span>
           <button
+            data-testid={`menu-add-${item.id}`}
             onClick={handleAdd}
-            disabled={!item.available || adding}
+            disabled={!item.available || adding || (inCart?.qty || 0)>=Math.min(item.remaining,item.max_qty_per_order)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all ${
               justAdded
                 ? 'bg-green-500 text-white' :'text-white'
@@ -105,7 +111,7 @@ export default function MenuItemCard({ item }: MenuItemCardProps) {
             ) : (
               <>
                 <ShoppingCart size={14} />
-                {inCart ? `In Cart (${inCart.qty})` : 'Add To Cart'}
+                {!item.available ? 'Out of Stock' : inCart ? `In Cart (${inCart.qty})` : 'Add To Cart'}
               </>
             )}
           </button>

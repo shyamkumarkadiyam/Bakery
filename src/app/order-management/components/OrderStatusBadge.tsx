@@ -2,6 +2,7 @@ import React from 'react';
 import { OrderStatus } from '@/data/ordersData';
 
 const statusConfig: Record<OrderStatus, { label: string; className: string }> = {
+  cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700' },
   pending: { label: 'Pending', className: 'status-pending' },
   confirmed: { label: 'Confirmed', className: 'status-confirmed' },
   packaging: { label: 'Packaging', className: 'status-packaging' },
