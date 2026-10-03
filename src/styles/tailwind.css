@@ -7,9 +7,9 @@
 :root {
   --background: #FAF8F8;
   --foreground: #1A1212;
-  --primary: #D63B5E;
+  --primary: #6b1a2e;
   --primary-foreground: #ffffff;
-  --secondary: #89CFF0;
+  --secondary: #D63B5E;
   --secondary-foreground: #ffffff;
   --accent: #FFC600;
   --accent-foreground: #1A1212;
@@ -19,7 +19,7 @@
   --card-foreground: #1A1212;
   --border: #EDE8E8;
   --input: #F5F0F0;
-  --ring: #D63B5E;
+  --ring: #6b1a2e;
   --radius: 0.75rem;
   --font-sans: 'Plus Jakarta Sans', sans-serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;

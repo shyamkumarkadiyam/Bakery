@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-02",
+  "result": "pass",
+  "backend": {"passed": 13, "failed": 0, "report": "/app/test_reports/pytest/pytest_results_final.xml"},
+  "typecheck": "yarn type-check passed after final edits",
+  "build": "Passed in iteration 2 with isolated build output; dev uses .next-dev so build checks cannot overwrite running preview files.",
+  "browser": [
+    "Real guest future checkout persisted order/items and reserved the selected date; confirmed schedule in customer tracking and Admin Orders (iteration 2)",
+    "Realtime cross-tab stock toggles and calendar block/unblock verified (iterations 1 and 2)",
+    "Admin cancellation releases stock once; cancelled orders cannot reopen",
+    "No horizontal page overflow at 320/768/1024/1440 for Menu, Admin Menu, Availability and checkout (iteration 2)",
+    "Final self-check: schedule toggle/date/time persisted through five reloads with readiness guard",
+    "Final self-check: no empty image src values",
+    "Final self-check: admin selected date is loaded before editing; block/unblock updates closure banner and confirmation; QA closure removed",
+    "Final self-check: cancelled order retains its scheduled-date display; admin sign out returns to login"
+  ],
+  "fixes_after_iteration_2": [
+    "Schedule picker waits for cart hydration before accepting interactions; readiness and mode markers added",
+    "Admin date controls wait for initial availability load and blocked-date actions select their target date",
+    "Stable checkout-state marker handles fast submit-to-success transitions",
+    "Missing menu images fall back to existing local placeholder; address controls have test IDs",
+    "Removed test-script hardcoded credentials and temporary build include paths"
+  ],
+  "cleanup": {"qa_orders_removed": 21, "qa_menu_items_removed": 1, "temporary_admins_removed": 1, "remaining_menu_items": 15, "remaining_qa_items": 0, "remaining_qa_closures": 0},
+  "mocked_inventory_apis": false,
+  "known_inventory_blockers": []
+}

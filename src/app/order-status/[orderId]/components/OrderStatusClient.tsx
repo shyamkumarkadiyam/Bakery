@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { scheduleLabel } from '@/lib/inventory';
 import { CheckCircle, Clock, MapPin, Package, Truck, Home, RefreshCw, AlertCircle, Phone, ArrowLeft,  } from 'lucide-react';
 
 interface OrderEvent {
@@ -19,6 +20,8 @@ interface OrderData {
   status: string;
   total: number;
   placedAt: string;
+  scheduledFor?: string | null;
+  timezone?: string | null;
   items: { name: string; qty: number; price: number }[];
 }
 
@@ -92,6 +95,8 @@ export default function OrderStatusClient({ orderId }: { orderId: string }) {
         status: orderData.status,
         total: orderData.total,
         placedAt: orderData.placed_at,
+        scheduledFor: orderData.scheduled_for,
+        timezone: orderData.fulfillment_timezone,
         items: (orderData.order_items || []).map((i: any) => ({
           name: i.name,
           qty: i.qty,
@@ -197,7 +202,7 @@ export default function OrderStatusClient({ orderId }: { orderId: string }) {
           </Link>
           <div className="text-center">
             <p className="text-xs text-muted-foreground">Order</p>
-            <p className="font-bold text-foreground font-mono">{order.id}</p>
+            <p data-testid="tracked-order-id" className="font-bold text-xs break-all text-foreground font-mono">{order.id}</p>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -238,12 +243,12 @@ export default function OrderStatusClient({ orderId }: { orderId: string }) {
               <p className="text-muted-foreground text-sm mt-1">
                 {steps[currentStepIdx]?.desc}
               </p>
-              <div className="mt-4 inline-flex items-center gap-2 bg-white border border-border rounded-full px-4 py-2 text-sm font-semibold text-foreground shadow-sm">
-                <Clock size={14} className="text-primary" />
-                ETA: {getETA(order.status, order.placedAt)}
-              </div>
             </>
           )}
+          {(order.scheduledFor || (!isCancelled&&!isDelivered)) && <div data-testid="tracked-order-schedule" className="mt-4 inline-flex items-center gap-2 bg-white border border-border rounded-lg px-4 py-2 text-sm font-semibold text-foreground shadow-sm">
+            <Clock size={14} className="text-primary" />
+            {order.scheduledFor ? `Scheduled: ${scheduleLabel(order.scheduledFor,order.timezone)}` : `ETA: ${getETA(order.status,order.placedAt)}`}
+          </div>}
         </div>
 
         {/* Step Progress */}
@@ -331,8 +336,8 @@ export default function OrderStatusClient({ orderId }: { orderId: string }) {
           <h3 className="font-bold text-foreground text-sm mb-4">Your Order</h3>
           <div className="space-y-2">
             {order.items.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between text-sm">
-                <span className="text-foreground">
+              <div key={idx} className="flex items-start justify-between text-sm">
+                <span className="text-foreground whitespace-pre-line">
                   <span className="font-semibold text-primary mr-1.5">{item.qty}×</span>
                   {item.name}
                 </span>

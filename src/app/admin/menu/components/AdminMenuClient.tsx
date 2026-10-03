@@ -1,7 +1,11 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Plus, Trash2, RefreshCw, X, ImageIcon } from 'lucide-react';
+import { Plus, RefreshCw, X } from 'lucide-react';
+import { useAvailability } from '@/lib/hooks/useAvailability';
+import { notifyInventoryChange } from '@/lib/inventory';
+import MenuItemCard from './MenuItemCard';
+import { BlockedDays } from '@/app/admin/availability/components/BlockedDays';
 
 interface MenuItem {
   id: string;
@@ -37,6 +41,7 @@ const EMPTY_FORM = {
   popular: false,
   badges: '',
   calories: '',
+  defaultQty: '5',
 };
 
 function mapRow(row: any): MenuItem {
@@ -56,8 +61,9 @@ function mapRow(row: any): MenuItem {
 }
 
 export default function AdminMenuClient() {
-  const [items, setItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedDate,setSelectedDate] = useState('');
+  const {data,loading,error,refresh:fetchItems,date} = useAvailability(selectedDate);
+  const items = data?.items || [];
   const [filterCat, setFilterCat] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -66,46 +72,16 @@ export default function AdminMenuClient() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const supabase = createClient();
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('menu_items')
-        .select('*')
-        .order('category')
-        .order('name');
-      if (!error && data) {
-        setItems(data.map(mapRow));
-      }
-    } catch (err) {
-      console.error('Fetch menu items error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchItems();
-    const channel = supabase
-      .channel('menu_items_admin_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
-        fetchItems();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchItems]);
-
   const deleteItem = async (id: string) => {
     if (!confirm('Delete this menu item? This cannot be undone.')) return;
     setDeletingId(id);
     try {
-      // Delete availability rules first (cascade should handle it, but be explicit)
-      await supabase.from('availability_rules').delete().eq('item_id', id);
-      await supabase.from('menu_stock').delete().eq('item_id', id);
-      await supabase.from('menu_items').delete().eq('id', id);
+      const {error} = await supabase.from('menu_items').delete().eq('id', id).select('id').single();
+      if(error) throw error;
+      notifyInventoryChange();
       fetchItems();
-    } catch (err) {
-      console.error('Delete item error:', err);
+    } catch (err: any) {
+      setSaveError(err.message || 'Could not delete menu item');
     } finally {
       setDeletingId(null);
     }
@@ -131,28 +107,18 @@ export default function AdminMenuClient() {
         image: form.image.trim(),
         alt: form.alt.trim(),
         available: true,
+        default_daily_quantity: Number(form.defaultQty),
         popular: form.popular,
         badges: badgesArr,
         calories: form.calories ? parseInt(form.calories) : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      }).select('id').single();
 
       if (error) {
         setSaveError(error.message);
       } else {
-        // Also add to menu_stock with default availability
-        await supabase.from('menu_stock').upsert({
-          item_id: itemId,
-          item_name: form.name.trim(),
-          category: form.category,
-          stock_qty: 20,
-          max_qty_per_order: 10,
-          low_stock_threshold: 5,
-          is_available: true,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'item_id' });
-
+        notifyInventoryChange();
         setForm(EMPTY_FORM);
         setShowAddForm(false);
         fetchItems();
@@ -171,15 +137,16 @@ export default function AdminMenuClient() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p data-testid="admin-menu-summary" className="text-sm text-muted-foreground mt-0.5">
             {items.length} items · {items.filter((i) => i.available).length} available
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            💡 To set out-of-stock status, use the <strong>Availability</strong> tab.
-          </p>
+          <label className="block text-xs mt-3">Stock date
+            <input data-testid="admin-menu-date" disabled={loading} aria-label="Menu stock date" type="date" value={date} onChange={e=>setSelectedDate(e.target.value)} className="block border border-border rounded-lg px-3 py-2 mt-1 bg-white text-sm"/>
+          </label>
         </div>
         <div className="flex items-center gap-2">
           <button
+            data-testid="admin-menu-refresh"
             onClick={fetchItems}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-lg border border-border bg-white"
           >
@@ -187,6 +154,7 @@ export default function AdminMenuClient() {
             Refresh
           </button>
           <button
+            data-testid="admin-menu-add"
             onClick={() => { setShowAddForm(true); setSaveError(''); }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
@@ -196,12 +164,15 @@ export default function AdminMenuClient() {
         </div>
       </div>
 
+      {(error || saveError) && <div data-testid="admin-menu-error" role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg text-sm">{saveError || error}</div>}
+      {data?.blocked && <div data-testid="admin-menu-closed" role="status" className="text-red-700 bg-red-50 p-3 rounded-lg text-sm">Closed on {date} — {data.reason}. All items are out of stock.</div>}
+
       {/* Add Item Form */}
       {showAddForm && (
         <div className="bg-white border border-border rounded-2xl shadow-card p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-bold text-foreground text-lg">Add New Menu Item</h3>
-            <button onClick={() => setShowAddForm(false)} className="text-muted-foreground hover:text-foreground">
+            <button data-testid="menu-add-close" aria-label="Close add item" onClick={() => setShowAddForm(false)} className="text-muted-foreground hover:text-foreground">
               <X size={18} />
             </button>
           </div>
@@ -209,6 +180,7 @@ export default function AdminMenuClient() {
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Item Name *</label>
               <input
+                data-testid="menu-add-name"
                 required
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -219,6 +191,7 @@ export default function AdminMenuClient() {
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Category *</label>
               <select
+                data-testid="menu-add-category"
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -231,6 +204,7 @@ export default function AdminMenuClient() {
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Price ($) *</label>
               <input
+                data-testid="menu-add-price"
                 required
                 type="number"
                 step="0.01"
@@ -244,6 +218,7 @@ export default function AdminMenuClient() {
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Calories</label>
               <input
+                data-testid="menu-add-calories"
                 type="number"
                 min="0"
                 value={form.calories}
@@ -255,6 +230,7 @@ export default function AdminMenuClient() {
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Description *</label>
               <textarea
+                data-testid="menu-add-description"
                 required
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -266,6 +242,7 @@ export default function AdminMenuClient() {
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Image URL</label>
               <input
+                data-testid="menu-add-image"
                 value={form.image}
                 onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
                 placeholder="https://..."
@@ -275,6 +252,7 @@ export default function AdminMenuClient() {
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Image Alt Text</label>
               <input
+                data-testid="menu-add-alt"
                 value={form.alt}
                 onChange={(e) => setForm((f) => ({ ...f, alt: e.target.value }))}
                 placeholder="Describe the image..."
@@ -284,6 +262,7 @@ export default function AdminMenuClient() {
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Badges (comma-separated)</label>
               <input
+                data-testid="menu-add-badges"
                 value={form.badges}
                 onChange={(e) => setForm((f) => ({ ...f, badges: e.target.value }))}
                 placeholder="⭐ Best Seller, 🌱 Veggie"
@@ -293,6 +272,7 @@ export default function AdminMenuClient() {
             <div className="flex items-center gap-3 pt-5">
               <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-foreground">
                 <input
+                  data-testid="menu-add-popular"
                   type="checkbox"
                   checked={form.popular}
                   onChange={(e) => setForm((f) => ({ ...f, popular: e.target.checked }))}
@@ -301,13 +281,12 @@ export default function AdminMenuClient() {
                 Mark as Popular
               </label>
             </div>
-            {saveError && (
-              <div className="sm:col-span-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {saveError}
-              </div>
-            )}
+            <label className="text-xs font-semibold">Default daily quantity
+              <input data-testid="menu-add-default-quantity" type="number" min="0" max="100000" step="1" required value={form.defaultQty} onChange={e=>setForm({...form,defaultQty:e.target.value})} className="block mt-1 w-full border border-border rounded-lg px-3 py-2 text-sm"/>
+            </label>
             <div className="sm:col-span-2 flex gap-3 justify-end">
               <button
+                data-testid="menu-add-cancel"
                 type="button"
                 onClick={() => setShowAddForm(false)}
                 className="px-4 py-2 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors"
@@ -315,6 +294,7 @@ export default function AdminMenuClient() {
                 Cancel
               </button>
               <button
+                data-testid="menu-add-submit"
                 type="submit"
                 disabled={saving}
                 className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
@@ -329,6 +309,7 @@ export default function AdminMenuClient() {
       {/* Category Filter */}
       <div className="flex flex-wrap gap-2">
         <button
+          data-testid="admin-menu-filter-all"
           onClick={() => setFilterCat('all')}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
             filterCat === 'all' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground hover:bg-primary/10'
@@ -340,6 +321,7 @@ export default function AdminMenuClient() {
           const count = items.filter((i) => i.category === cat.id).length;
           return (
             <button
+              data-testid={`admin-menu-filter-${cat.id}`}
               key={cat.id}
               onClick={() => setFilterCat(cat.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
@@ -352,88 +334,40 @@ export default function AdminMenuClient() {
         })}
       </div>
 
-      {/* Items Grid */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-7 h-7 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white border border-border rounded-2xl shadow-card overflow-hidden"
-            >
-              {/* Image */}
-              <div className="relative h-36 bg-muted overflow-hidden">
-                {item.image ? (
-                  <img
-                    src={item.image}
-                    alt={item.alt}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <ImageIcon size={32} />
-                  </div>
-                )}
-                {!item.available && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">Out of Stock</span>
-                  </div>
-                )}
-                {item.popular && (
-                  <span className="absolute top-2 left-2 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    ⭐ Popular
-                  </span>
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="p-3">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <h4 className="font-bold text-sm text-foreground leading-tight">{item.name}</h4>
-                  <span className="font-bold text-sm text-primary flex-shrink-0">${item.price.toFixed(2)}</span>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.description}</p>
-                {item.badges.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {item.badges.slice(0, 2).map((badge, i) => (
-                      <span key={i} className="text-[10px] bg-pink-light text-primary px-1.5 py-0.5 rounded-full font-medium">
-                        {badge}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Actions — only delete; availability managed in Availability tab */}
-                <div className="flex items-center gap-2 pt-2 border-t border-border">
-                  <span className={`flex-1 text-center text-xs font-semibold px-2 py-1.5 rounded-lg ${
-                    item.available ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                  }`}>
-                    {item.available ? '✓ Available' : '✗ Out of Stock'}
-                  </span>
-                  <button
-                    onClick={() => deleteItem(item.id)}
-                    disabled={deletingId === item.id}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                    title="Delete item"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
+      {/* Items + Blocked Days */}
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_300px] gap-8">
+        <section className="min-w-0">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-7 h-7 rounded-full border-4 border-primary border-t-transparent animate-spin" />
             </div>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="grid sm:grid-cols-2 2xl:grid-cols-3 gap-4">
+              {filtered.map((item) => (
+                <MenuItemCard
+                  key={item.id}
+                  item={item}
+                  date={date}
+                  closed={!!data?.blocked}
+                  onError={setSaveError}
+                  onChanged={fetchItems}
+                  onDelete={deleteItem}
+                  deleting={deletingId === item.id}
+                />
+              ))}
+            </div>
+          )}
 
-      {!loading && filtered.length === 0 && (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-4xl mb-3">🍽️</p>
-          <p className="font-semibold">No items in this category</p>
-        </div>
-      )}
+          {!loading && filtered.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground">
+              <p className="text-4xl mb-3">🍽️</p>
+              <p className="font-semibold">No items in this category</p>
+            </div>
+          )}
+        </section>
+
+        <BlockedDays selectedDate={date} onDateChange={setSelectedDate} ready={!loading} onError={setSaveError} />
+      </div>
     </div>
   );
 }

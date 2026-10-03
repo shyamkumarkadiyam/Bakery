@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
 import { ChevronRight, ChevronLeft, Calendar, Cake, Palette, Camera, Sparkles, FileText, Upload, X, Check, RefreshCw, Send, Heart } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -39,6 +40,9 @@ interface InspirationData {
 
 interface QuoteData {
   extraNotes: string;
+  name: string;
+  phone: string;
+  email: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -974,7 +978,7 @@ function Step5AIStudio({
 // ─── Step 6: Quote Brief ──────────────────────────────────────────────────────
 
 function Step6Quote({
-  occasion, cake, design, inspiration, aiImageUrl, quoteData, onChange, onSubmit, submitting, submitted,
+  occasion, cake, design, inspiration, aiImageUrl, quoteData, onChange, onSubmit, submitting, submitted, trackingCode,
 }: {
   occasion: OccasionData;
   cake: CakeBasicsData;
@@ -986,6 +990,7 @@ function Step6Quote({
   onSubmit: () => void;
   submitting: boolean;
   submitted: boolean;
+  trackingCode: string;
 }) {
   const colorPalette = COLOR_PALETTES.find((p) => JSON.stringify(p.colors) === JSON.stringify(design.colors));
   const decoLabels = design.decorations.map((id) => DECORATIONS.find((d) => d.id === id)?.label).filter(Boolean).join(', ');
@@ -1004,8 +1009,9 @@ function Step6Quote({
           </p>
         </div>
         <div className="bg-[#FFF0F3] rounded-2xl p-5 w-full max-w-sm text-center border border-[#FFCDD5]">
-          <p className="text-xs font-bold font-sans text-[#6b1a2e] uppercase tracking-wide mb-1">What happens next?</p>
-          <p className="text-sm font-body text-[#3a2a2e]">You'll receive a personalized quote within 24 hours via email or WhatsApp.</p>
+          <p className="text-xs font-bold font-sans text-[#6b1a2e] uppercase tracking-wide mb-1">Your Cake Tracking Number</p>
+          <p data-testid="cake-tracking-code" className="text-2xl font-extrabold font-sans text-[#6b1a2e] tracking-wider my-2">{trackingCode}</p>
+          <p className="text-sm font-body text-[#3a2a2e]">Save this number. Track your cake anytime on the <a href="/track-order" className="underline font-semibold">Track Order</a> page. We'll review your design and send a personalized quote.</p>
         </div>
       </div>
     );
@@ -1120,6 +1126,16 @@ function Step6Quote({
         </div>
       </div>
 
+      {/* Contact details */}
+      <div className="bg-white rounded-2xl border border-[#EDE8E8] p-5 space-y-3">
+        <p className="text-xs font-bold font-sans text-[#6b1a2e] uppercase tracking-wider">Your contact details</p>
+        <input data-testid="cake-contact-name" type="text" value={quoteData.name} onChange={(e)=>onChange({ ...quoteData, name: e.target.value })} placeholder="Your name *" className="w-full px-4 py-3 rounded-xl border border-[#EDE8E8] bg-white text-sm font-body focus:outline-none focus:border-[#D63B5E]" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input data-testid="cake-contact-phone" type="tel" value={quoteData.phone} onChange={(e)=>onChange({ ...quoteData, phone: e.target.value })} placeholder="Phone *" className="w-full px-4 py-3 rounded-xl border border-[#EDE8E8] bg-white text-sm font-body focus:outline-none focus:border-[#D63B5E]" />
+          <input data-testid="cake-contact-email" type="email" value={quoteData.email} onChange={(e)=>onChange({ ...quoteData, email: e.target.value })} placeholder="Email (optional)" className="w-full px-4 py-3 rounded-xl border border-[#EDE8E8] bg-white text-sm font-body focus:outline-none focus:border-[#D63B5E]" />
+        </div>
+      </div>
+
       {/* Extra Notes */}
       <div>
         <label className="block text-xs font-bold font-sans text-[#6b1a2e] uppercase tracking-wider mb-2">Anything we missed?</label>
@@ -1177,7 +1193,8 @@ export default function CakeStudioClient() {
   const [inspiration, setInspiration] = useState<InspirationData>({
     images: [], mustHave: '', dontWant: '', extraNotes: '',
   });
-  const [quoteData, setQuoteData] = useState<QuoteData>({ extraNotes: '' });
+  const [quoteData, setQuoteData] = useState<QuoteData>({ extraNotes: '', name: '', phone: '', email: '' });
+  const [trackingCode, setTrackingCode] = useState('');
 
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -1226,10 +1243,38 @@ export default function CakeStudioClient() {
   };
 
   const handleSubmit = async () => {
+    if (!quoteData.name.trim() || !quoteData.phone.trim()) {
+      toast.error('Please add your name and phone number.');
+      return;
+    }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      const supabase = createClient();
+      const urls: string[] = [];
+      for (const img of inspiration.images) {
+        const ext = (img.file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage.from('cake-inspiration').upload(path, img.file, { contentType: img.file.type });
+        if (!error) { const { data } = supabase.storage.from('cake-inspiration').getPublicUrl(path); urls.push(data.publicUrl); }
+      }
+      const payload = {
+        customer_name: quoteData.name, customer_phone: quoteData.phone, customer_email: quoteData.email,
+        event_date: occasion.eventDate || null, ai_image_url: aiImageUrl || '', inspiration_images: urls,
+        brief: {
+          occasion, cake, design,
+          inspiration: { mustHave: inspiration.mustHave, dontWant: inspiration.dontWant, extraNotes: inspiration.extraNotes },
+          likes: inspiration.images.map((i) => i.likes), notes: quoteData.extraNotes,
+        },
+      };
+      const { data, error } = await supabase.rpc('submit_cake_quote', { p_payload: payload });
+      if (error) throw error;
+      setTrackingCode((data as { tracking_code: string }).tracking_code);
+      setSubmitted(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send your request. Please retry.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isLastStep = step === STEPS.length - 1;
@@ -1290,6 +1335,7 @@ export default function CakeStudioClient() {
             onSubmit={handleSubmit}
             submitting={submitting}
             submitted={submitted}
+            trackingCode={trackingCode}
           />
         )}
       </div>

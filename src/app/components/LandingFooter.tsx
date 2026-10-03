@@ -40,6 +40,7 @@ export default function LandingFooter() {
             © 2026 Lolita Bakery. Made with love in Peoria, IL.
           </p>
           <div className="flex gap-4 font-body text-xs text-white/30">
+            <Link href="/track-order" data-testid="footer-track-order-link" className="hover:text-white/60 transition-colors">Track Order</Link>
             <Link href="#" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
             <Link href="#" className="hover:text-white/60 transition-colors">Terms of Service</Link>
           </div>

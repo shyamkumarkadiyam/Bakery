@@ -1,0 +1,89 @@
+{
+  "summary": "Executed real Supabase + Next wrapper backend regression tests and UI integration smoke for inventory synchronization and checkout.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /rest/v1/rpc/place_inventory_order (and /api/orders wrapper)",
+        "issue": "Order placement fails with SQL error: column reference \"m.id\" is ambiguous, breaking all successful future reservations/checkout flows.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "Build pipeline",
+        "issue": "First `yarn build` run failed with `Unexpected end of JSON input`; second run after clearing `.next` succeeded (flaky build behavior)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Admin Availability / BlockedDays",
+        "issue": "Clicking `Block date` does not create a blocked day, and no success/error feedback is shown.",
+        "selector": "[data-testid=\"block-date-submit\"]",
+        "priority": "HIGH"
+      },
+      {
+        "component": "AdminLayout",
+        "issue": "Sign Out button has no click handler (no logout action).",
+        "selector": "Admin sidebar Sign Out button",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Future checkout",
+        "issue": "Checkout remains on payment with error (good failure handling), but error shown is raw SQL internal message from backend.",
+        "affected_selectors": [
+          "[data-testid=\"checkout-error\"]",
+          "[data-testid=\"place-order-submit\"]"
+        ]
+      },
+      {
+        "flow": "Realtime stock sync",
+        "issue": "Admin menu stock toggle synchronized to customer menu in separate tab (verified).",
+        "affected_selectors": [
+          "[data-testid^=\"menu-toggle-\"]",
+          "[data-testid^=\"menu-stock-\"]"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Menu browser",
+        "issues": [
+          "No horizontal overflow observed at 320/768/1024/1440 during tested flow."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/test_inventory_core.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix SQL in `place_inventory_order` function (ambiguous `m.id` reference) and retest all order/atomic/idempotency flows.",
+    "Fix `Block date` UI flow so submit persists blocked_dates and surfaces success/error status.",
+    "Map backend SQL errors to user-safe error messages (avoid leaking internal SQL text).",
+    "Wire actual sign-out action in AdminLayout button.",
+    "Add missing `data-testid` attributes to login form controls for maintainable automation."
+  ],
+  "critical_code_review_comments": [
+    "`place_inventory_order` uses PL/pgSQL record variable `m` and SQL alias `m` in same scope; this causes runtime ambiguity and blocks the primary reservation workflow.",
+    "Admin blocking UX has no observable state transition or error handling feedback on submit, causing silent failure behavior.",
+    "Raw backend exception messages are directly rendered in checkout error banner (security/UX concern)."
+  ],
+  "updated_files": [
+    "/app/tests/test_inventory_core.py",
+    "/app/test_reports/iteration_1.json"
+  ],
+  "success_rate": {
+    "backend": "56% (5/9 tests passed)",
+    "frontend": "60% (core smoke and checkout failure behavior verified; block-date UI flow failing)"
+  },
+  "seed_data_creation": "Created isolated QA menu items with `qa-inventory-*` prefix via automated tests; fixture items were cleaned up. QA orders created for verification remain as historical records.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Primary blocker is backend `place_inventory_order` SQL ambiguity. Re-run `/app/tests/test_inventory_core.py` after fix. UI block-date issue reproduced repeatedly from admin availability page; backend RPC `set_blocked_date` works via API tests, so likely frontend submission/state issue.",
+  "rca of the issue": "RCA: `place_inventory_order` fails at runtime with Postgres 42702 due to ambiguous `m.id` reference (PL/pgSQL variable/table alias collision). Reproduction: any valid checkout payload to RPC or /api/orders. Impact: future guest checkout, atomic race tests, idempotency success path, and order snapshot cascade verification all fail because no order can be placed through inventory RPC. Mitigation: rename SQL alias/PLpgSQL variable and retest reservation + idempotency + rollback suite. Separately, admin block-date UI submit appears to no-op despite no visible errors; investigate BlockedDays submit path/state binding and response handling."
+}

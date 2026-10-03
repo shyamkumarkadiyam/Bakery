@@ -1,11 +1,5 @@
-import React from 'react';
-import AdminLayout from '@/components/AdminLayout';
-import AvailabilityClient from './components/AvailabilityClient';
+import { redirect } from 'next/navigation';
 
 export default function AdminAvailabilityPage() {
-  return (
-    <AdminLayout title="Availability">
-      <AvailabilityClient />
-    </AdminLayout>
-  );
+  redirect('/admin/menu');
 }

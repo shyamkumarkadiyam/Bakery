@@ -189,6 +189,12 @@ export default function AccountPage() {
                 Register
               </a>
             </div>
+            <div className="mt-4 pt-4 border-t border-[#e8c9d6]">
+              <p className="font-body text-xs mb-1.5" style={{ color: '#6b5a5e' }}>Ordered as a guest?</p>
+              <a href="/track-order" data-testid="account-track-order-link" className="text-sm font-semibold hover:underline" style={{ color: '#7a2a3a' }}>
+                Track an order by number →
+              </a>
+            </div>
           </div>
         </main>
         <LandingFooter />
@@ -312,7 +318,7 @@ export default function AccountPage() {
                   </div>
                   <div className="space-y-1 mb-3">
                     {order.order_items?.slice(0, 3).map((item, idx) => (
-                      <p key={idx} className="font-body text-xs" style={{ color: '#3a2a2e' }}>
+                      <p key={idx} className="font-body text-xs whitespace-pre-line" style={{ color: '#3a2a2e' }}>
                         {item.name} × {item.qty}
                       </p>
                     ))}

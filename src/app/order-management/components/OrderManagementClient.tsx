@@ -5,6 +5,8 @@ import OrderTable from './OrderTable';
 import OrderDetailPanel from './OrderDetailPanel';
 import { Order } from '@/data/ordersData';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
+import { notifyInventoryChange } from '@/lib/inventory';
 
 function mapRow(row: any): Order {
   return {
@@ -23,6 +25,8 @@ function mapRow(row: any): Order {
       ? new Date(row.placed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       : '',
     notes: row.notes || '',
+    scheduledFor: row.scheduled_for,
+    fulfillmentTimezone: row.fulfillment_timezone,
   };
 }
 
@@ -46,7 +50,7 @@ export default function OrderManagementClient() {
         .limit(100);
       if (!error && data) {
         setOrders((prev) => {
-          const mapped = data.map(mapRow);
+          const mapped: Order[] = data.map(mapRow);
           // Apply any pending updates that haven't been confirmed by DB yet
           return mapped.map((o) => {
             const pending = pendingUpdates.current.get(o.id);
@@ -109,38 +113,27 @@ export default function OrderManagementClient() {
       const { error: updateError } = await supabase
         .from('orders')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', orderId);
+        .eq('id', orderId).select('id').single();
 
       if (updateError) {
         console.error('Update status error:', updateError);
+        toast.error(updateError.message);
         // Revert optimistic update on failure
         pendingUpdates.current.delete(orderId);
         await fetchOrders();
         return;
       }
 
-      // Explicitly upsert into order_status_events via SECURITY DEFINER RPC
-      // Uses INSERT ... ON CONFLICT (order_id) DO UPDATE — one row per order
-      const statusMessages: Record<string, string> = {
-        pending: 'Order received and awaiting confirmation',
-        confirmed: 'Order confirmed by the bakery',
-        packaging: 'Your order is being prepared and packaged',
-        enroute: 'Your order is on the way!',
-        delivered: 'Order delivered successfully',
-        pickup: 'Order is ready for pickup',
-        cancelled: 'Order has been cancelled',
-      };
+      // Status timeline and cancellation release are database triggers.
+      notifyInventoryChange();
+      toast.success(`Order updated to ${newStatus}`);
 
-      const { error: eventError } = await supabase.rpc('upsert_order_status_event', {
-        p_order_id: orderId,
-        p_status: newStatus,
-        p_message: statusMessages[newStatus] ?? 'Order status updated',
-      });
-
-      if (eventError) {
-        console.error('Insert order_status_events error:', eventError);
-        // Non-fatal: order status was already updated successfully
-      }
+      // Fire-and-forget SMS notification (server decides if a text applies).
+      fetch('/api/notify-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, status: newStatus }),
+      }).catch(() => {});
 
     } catch (err) {
       console.error('Update status error:', err);

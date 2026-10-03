@@ -1,5 +1,5 @@
 export type OrderStatus =
-  | 'pending' |'confirmed' |'packaging' |'enroute' |'delivered' |'pickup';
+  | 'pending' |'confirmed' |'packaging' |'enroute' |'delivered' |'pickup' |'cancelled';
 
 export interface OrderItem {
   name: string;
@@ -20,6 +20,8 @@ export interface Order {
   status: OrderStatus;
   type: 'delivery' | 'pickup';
   placedAt: string;
+  scheduledFor?: string | null;
+  fulfillmentTimezone?: string | null;
   notes: string;
 }
 

@@ -3,13 +3,17 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { CheckCircle, Clock, MapPin, Package } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import { scheduleLabel } from '@/lib/inventory';
 
 interface OrderSuccessStepProps {
   orderId: string;
   deliveryType: 'delivery' | 'pickup';
+  scheduledFor?: string | null;
+  timezone?: string;
+  total?: number;
 }
 
-export default function OrderSuccessStep({ orderId, deliveryType }: OrderSuccessStepProps) {
+export default function OrderSuccessStep({ orderId, deliveryType,scheduledFor,timezone,total }: OrderSuccessStepProps) {
   const clearCart = useCartStore((s) => s.clearCart);
 
   useEffect(() => {
@@ -29,7 +33,7 @@ export default function OrderSuccessStep({ orderId, deliveryType }: OrderSuccess
             Order Placed! 🎉
           </h1>
           <p className="text-muted-foreground">
-            Lolita is already heating up the kitchen for you! 🌸
+            {scheduledFor ? 'Your scheduled order is confirmed in our system.' : 'Your order has been received! 🌸'}
           </p>
         </div>
 
@@ -38,7 +42,8 @@ export default function OrderSuccessStep({ orderId, deliveryType }: OrderSuccess
           <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
             Order ID
           </p>
-          <p className="text-2xl font-extrabold text-primary font-tabular">{orderId}</p>
+          <p data-testid="order-success-id" className="text-lg break-all font-extrabold text-primary font-tabular">{orderId}</p>
+          <p data-testid="order-success-total" className="text-sm font-semibold mt-2">Total: ${total?.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground mt-1">Save this for tracking</p>
         </div>
 
@@ -49,9 +54,9 @@ export default function OrderSuccessStep({ orderId, deliveryType }: OrderSuccess
               <Clock size={16} className="text-primary" />
             </div>
             <div className="text-left">
-              <p className="text-xs text-muted-foreground font-medium">Estimated Time</p>
-              <p className="font-bold text-foreground text-sm">
-                {deliveryType === 'delivery' ? '25–35 minutes' : '15–20 minutes'}
+              <p className="text-xs text-muted-foreground font-medium">{scheduledFor ? 'Scheduled for' : 'Estimated Time'}</p>
+              <p data-testid="order-success-schedule" className="font-bold text-foreground text-sm">
+                {scheduledFor ? scheduleLabel(scheduledFor,timezone) : deliveryType === 'delivery' ? '25–35 minutes' : '15–20 minutes'}
               </p>
             </div>
           </div>
@@ -76,15 +81,17 @@ export default function OrderSuccessStep({ orderId, deliveryType }: OrderSuccess
 
         <div className="space-y-3">
           <Link
+            data-testid="order-success-track"
             href={`/order-status/${orderId}`}
             className="block w-full btn-primary py-4 text-base"
           >
             Track My Order 📍
           </Link>
-          <Link href="/" className="block w-full btn-outline py-4 text-base">
+          <Link data-testid="order-success-home" href="/" className="block w-full btn-outline py-4 text-base">
             Back to Home 🏠
           </Link>
           <Link
+            data-testid="order-success-more"
             href="/menu-browser"
             className="block w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors py-2"
           >

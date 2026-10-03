@@ -4,7 +4,7 @@ import AdminMenuClient from './components/AdminMenuClient';
 
 export default function AdminMenuPage() {
   return (
-    <AdminLayout title="Menu Management">
+    <AdminLayout title="Menu">
       <AdminMenuClient />
     </AdminLayout>
   );

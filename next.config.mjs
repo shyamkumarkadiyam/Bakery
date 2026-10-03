@@ -1,4 +1,5 @@
 import { imageHosts } from './image-hosts.config.mjs';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -21,4 +22,5 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
   }
 };
-export default nextConfig;
+// A build must never overwrite the running preview's chunks/manifests.
+export default (phase) => ({ ...nextConfig, distDir: phase === PHASE_DEVELOPMENT_SERVER ? '.next-dev' : nextConfig.distDir });

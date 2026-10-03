@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import '../styles/tailwind.css';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { CartHydration } from '@/components/CartHydration';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="en" className={`${plusJakartaSans.variable}`}>
       <body className={plusJakartaSans.className}>
         <AuthProvider>
+          <CartHydration />
           {children}
         </AuthProvider>
         <Toaster

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { scheduleLabel } from '@/lib/inventory';
 import { Package, Clock, CheckCircle, Truck, Home, AlertCircle, ChevronRight, ShoppingBag, ArrowLeft, Wifi,  } from 'lucide-react';
 
 interface OrderItem {
@@ -17,6 +18,8 @@ interface Order {
   status: string;
   total: number;
   placedAt: string;
+  scheduledFor?: string | null;
+  timezone?: string | null;
   deliveryType: string;
   items: OrderItem[];
 }
@@ -79,6 +82,8 @@ export default function OrderHistoryClient() {
         status: o.status,
         total: o.total,
         placedAt: o.placed_at,
+        scheduledFor: o.scheduled_for,
+        timezone: o.fulfillment_timezone,
         deliveryType: o.delivery_type,
         items: (o.order_items || []).map((i: any) => ({
           name: i.name,
@@ -141,6 +146,16 @@ export default function OrderHistoryClient() {
         >
           Sign In
         </Link>
+        <div className="mt-6 pt-6 border-t border-border max-w-xs mx-auto">
+          <p className="text-xs text-muted-foreground mb-2">Ordered as a guest?</p>
+          <Link
+            href="/track-order"
+            data-testid="order-history-track-link"
+            className="inline-flex items-center gap-2 text-primary font-semibold text-sm hover:underline"
+          >
+            Track an order by number
+          </Link>
+        </div>
       </div>
     );
   }
@@ -245,11 +260,12 @@ export default function OrderHistoryClient() {
 function OrderCard({ order, isActive }: { order: Order; isActive: boolean }) {
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
   const StatusIcon = cfg.icon;
-  const eta = getETA(order.status, order.placedAt);
+  const eta = order.scheduledFor ? scheduleLabel(order.scheduledFor,order.timezone) : getETA(order.status, order.placedAt);
   const isCancelled = order.status === 'cancelled';
 
   return (
     <Link
+      data-testid={`history-order-${order.id}`}
       href={`/order-status/${order.id}`}
       className={`block bg-white border rounded-2xl p-5 shadow-card transition-all hover:shadow-md hover:-translate-y-0.5 ${
         isActive && !isCancelled ? 'border-primary/30' : 'border-border'
